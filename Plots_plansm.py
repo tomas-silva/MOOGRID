@@ -91,9 +91,15 @@ def plot_dados_comparar(files, save='no', modo='original', top=8, ficheiro_a_com
         # -1 porque ultimo elemento das listas é tipo lixo residual da funçao de fazer listas de topo
         for file_finais in lista_top_ficheiros[:-1]:
             dados_finais = np.loadtxt(file_finais, skiprows=2)
+            extra_met=0
+            extra_micro=0
+            if file_finais[25] == '-':
+                extra_met=1
+            if file_finais[30+extra_met] == '-':
+                extra_micro = 1
             ax.plot(dados_finais[:, 0], dados_finais[:, 1], color=cores[a % (len(cores))],
                     label=str('[') + str(file_finais[15:19]) + str(',') + str(file_finais[20:24]) + str(',')
-                          + str(file_finais[25:29]) + str(',') + str(file_finais[30:34]) + str(']'))
+                          + str(file_finais[25:29+extra_met]) + str(',') + str(file_finais[30+extra_met:34+extra_met+extra_micro]) + str(']'))
             a = a + 1
 
         ### Extra - também quero comparar com dados do MOOG para parametros do Sol
@@ -196,7 +202,6 @@ set_comparar_temp = [5600, 5650, 5700, 5750, 5777, 5800, 5850, 5900, 5950, 6000]
 set_comparar_logg = [4.3, 4.4, 4.44, 4.5, 4.6]
 set_comparar_metal = [-0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4]
 set_comparar_micro = [0.6, 0.8, -1.1, 1, 1.1, 1.2, 1.4]
-
 
 files_compare = (construct_list_filenames(set_comparar_temp, set_comparar_logg,
                                           set_comparar_metal, set_comparar_micro, 'Nuno'))
