@@ -3,6 +3,32 @@ import matplotlib.pyplot as plt
 import os
 import os.path
 from scipy.stats import chisquare
+import sys
+from time import sleep
+
+# Print iterations progress
+def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=100):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        bar_length  - Optional  : character length of bar (Int)
+    """
+    str_format = "{0:." + str(decimals) + "f}"
+    percents = str_format.format(100 * (iteration / float(total)))
+    filled_length = int(round(bar_length * iteration / float(total)))
+    bar = '█' * filled_length + '-' * (bar_length - filled_length)
+
+    sys.stdout.write("\r"),
+    sys.stdout.write('%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
+
+    if iteration == total:
+        sys.stdout.write('\n')
+    sys.stdout.flush()
 
 
 def plot_dados(file, save='no', estilo='original'):
@@ -61,9 +87,10 @@ def plot_dados_comparar(files, save='no', modo='original', top=8, ficheiro_a_com
         plt.show()
 
     if modo == 'chi_quadrado':
-        print(' ')
-        print('Verificar sempre len(), step, range, ... de ficheiros synth vs ficheiro a comparar. ')
-        print(' ')
+        """ Verificar sempre len(), step, range, ... de ficheiros synth vs ficheiro a comparar. """
+        #print(' ')
+        #print('Verificar sempre len(), step, range, ... de ficheiros synth vs ficheiro a comparar. ')
+        #print(' ')
 
         dados = np.loadtxt(ficheiro_a_comparar, skiprows=2)
 
@@ -75,6 +102,11 @@ def plot_dados_comparar(files, save='no', modo='original', top=8, ficheiro_a_com
         lista_top_fluxos = [1000] * (top + 1)
         lista_top_ficheiros = [1000] * (top + 1)
 
+        count_progress = 0
+        l = len(files)-1 #menos o que está a comparar
+        print(' ')
+        print('Calculation of best fits:')
+
         for file_comp in files:
             if file_comp != ficheiro_a_comparar:
                 dados_comp = np.loadtxt(file_comp, skiprows=2)
@@ -82,6 +114,10 @@ def plot_dados_comparar(files, save='no', modo='original', top=8, ficheiro_a_com
                 chi_square_value = chi_square[0]
                 (index_top, valor_topo) = lugar_no_top(lista_top_fluxos[:-1], chi_square_value)
                 #print(lista_top_fluxos)
+
+                print_progress(count_progress, l, prefix='Progress:', suffix='Complete', decimals=1, bar_length=100)
+                count_progress += 1
+
                 for i in range(index_top,top):
                     lista_top_fluxos[i+1] = lista_top_fluxos[i]
                     lista_top_ficheiros[i+1] = lista_top_ficheiros[i]
@@ -123,10 +159,6 @@ def plot_dados_comparar(files, save='no', modo='original', top=8, ficheiro_a_com
         plt.show()
 
 
-# Chamar ficheiros da minha pasta, criados por MOOG
-all_files = os.listdir("/home/tomas/Masters/Sun_MOOG/Files_plansm.outtest")
-
-
 def plansm_filtro(todos_ficheiros):
     """ Função para filtrar ficheiros por nome, assim só obtemos os 'plansm', o que queremos, retirando por exemplo
     ficheiros Python"""
@@ -135,10 +167,6 @@ def plansm_filtro(todos_ficheiros):
         if ficheiro[:6] == 'plansm':  # ler primeiras seis letras
             lista.append(ficheiro)
     return lista
-
-
-# Só temos agora os ficheiros a começar por 'plansm'
-plansm_files = plansm_filtro(all_files)
 
 
 def construct_list_filenames(set_temp, set_logg, set_metal, set_micro, extra):
@@ -198,12 +226,25 @@ def lugar_no_top(lista_top, candidato): # função recursiva
 #set_comparar_micro = [0.6, 0.8, -1.1, 1, 1.1, 1.2, 1.4]
 
 
+# Chamar ficheiros da minha pasta, criados por MOOG
+all_files = os.listdir("/home/tomas/Masters/Sun_MOOG/Files_plansm.outtest")
+
+# Só temos agora os ficheiros a começar por 'plansm'
+plansm_files = plansm_filtro(all_files)
+
+
 set_comparar_temp = [5600, 5650, 5700, 5750, 5777, 5800, 5850, 5900, 5950, 6000]
 set_comparar_logg = [4.3, 4.4, 4.44, 4.5, 4.6]
 set_comparar_metal = [-0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4]
 set_comparar_micro = [0.6, 0.8, -1.1, 1, 1.1, 1.2, 1.4]
 
-files_compare = (construct_list_filenames(set_comparar_temp, set_comparar_logg,
-                                          set_comparar_metal, set_comparar_micro, 'Nuno'))
+# files_compare = (construct_list_filenames(set_comparar_temp, set_comparar_logg, set_comparar_metal, set_comparar_micro, 'Sergio'))
 
-plot_dados_comparar(files_compare, 'no_save','chi_quadrado',8,'plansm.outtest_Nuno')
+Total_set = (construct_list_filenames(set_comparar_temp, set_comparar_logg,
+                                      set_comparar_metal, set_comparar_micro, None))
+
+#plot_dados_comparar(files_compare, 'no_save','chi_quadrado',8,'plansm.outtest_Nuno')
+plot_dados_comparar(Total_set, 'no_save','chi_quadrado',8,'plansm.outtest_Sergio')
+
+##ARRANJAR CENA DE TER QUE ESCREVER NOME DUAS VEZES NO files_compare e no input do plot_dados_comparar
+
