@@ -1,0 +1,116 @@
+
+#!/bin/bash
+
+folder_script=$(echo ~/Masters)
+
+folder_lines=$(echo ~/Masters/Lindgren/Lines)
+name_file_lines=$(echo 'line_article_Lindgren.list')
+#name_file_lines=$(echo 'lineMgIb_original.list')
+
+folder_with_interpol=$(echo ~/Masters/school_codes/interpol_models_marcs) 
+folder_where_error_files_go=$(echo ~/Masters/Onehag/Error_files_from_script) 
+
+folder_atm=$(echo ~/Masters/Lindgren/Files_atm) 
+folder_par=$(echo ~/Masters/Lindgren/Files_par) 
+
+folder_plan=$(echo ~/Masters/Lindgren/Files_plan.outtest) 
+folder_planraw=$(echo ~/Masters/Lindgren/Files_planraw.outtest) 
+folder_plansm=$(echo ~/Masters/Lindgren/Files_plansm.outtest) 
+folder_plansm_wv_parts=$(echo ~/Masters/Lindgren/Files_plansm.outtest/Wv_parts) 
+
+
+
+declare -a min_wv=(11680.0)
+ 
+declare -a max_wv=(12920.0)
+
+declare -a interv_wv=(400) #deixar <=400 por problemas de memoria com MOOG
+
+declare -a step_wv_MOOG=(0.001) #deixar 0.001 para não ter problemas com MOOG
+
+# Intervalo de comprimentos de onda a ser estudado
+
+dif_wv=$(echo "$max_wv - $min_wv" | bc) #diferença entre intervalo de wv
+div_int=$(echo "$dif_wv / 400" | bc) #divisao inteira 
+div_sobra=$(echo "$dif_wv % 400" | bc) #resto
+
+# Construçao de Array inicial, sem consideraçao por possivel resto
+
+END_div_int=div_int
+for ((i=1;i<=END_div_int;i++));
+do
+	valor_min_wv_iter=$(echo "$min_wv + (400 * ($i-1))" | bc)
+	ARRAY_wv_intv[$i]=$valor_min_wv_iter
+done
+
+max_wv_from_intdiv=$(echo "${ARRAY_wv_intv[-1]} + 400" | bc)
+index_for_max_wv_from_intdiv=$(echo "$div_int + 1" | bc)
+ARRAY_wv_intv[$index_for_max_wv_from_intdiv]=$max_wv_from_intdiv
+
+# Verificar se há resto ou não e caso haja incluir no Array
+
+
+max_wv_from_rest=$(echo "$max_wv_from_intdiv + $div_sobra" | bc)
+index_for_rest=$(echo "$div_int + 2" | bc)
+
+if [ $max_wv_from_intdiv != $max_wv ];
+then
+    ARRAY_wv_intv[$index_for_rest]=$max_wv_from_rest
+    END_wv_intv=div_int+1
+    echo "Divisão não inteira"
+
+else
+    END_wv_intv=div_int
+    echo "Divisão inteira"
+fi
+
+echo "Steps:"
+echo ${ARRAY_wv_intv[*]}
+
+
+
+
+
+cd $folder_plansm_wv_parts
+
+
+number_of_elements_in_ARRAY=${#ARRAY_wv_intv[@]} #nº de elementos no array
+
+
+if [ $number_of_elements_in_ARRAY -eq 2 ]; #se numero de elementos for só 2, isto é, um unico ficheiro
+then
+			tail -n +3 <plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[2]} >parcial_uniq.txt #elimina as duas primeiras linhas
+			#Criar cabeçalho
+			echo 'start =  '${ARRAY_wv_intv[1]}'     stop =  '${ARRAY_wv_intv[2]}'     step =      '$step_wv_MOOG'' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt
+			echo 'Final file - from unique file' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt	
+else
+	for ((i=1;i<=number_of_elements_in_ARRAY-1;i++)); do #-1 porque ultimo pode ter wv max final diferente de multiplo de intervalo de wv
+		if [ ${ARRAY_wv_intv[i]} == $min_wv ];
+		then
+
+			tail -n +3 <plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[i]}'_'${ARRAY_wv_intv[i+1]} >parcial$i.txt #elimina as duas primeiras linhas
+			#Criar cabeçalho
+			echo 'start =  '$min_wv'     stop =  '$max_wv'     step =      '$step_wv_MOOG'' | cat - parcial$i.txt > temp && mv temp parcial$i.txt
+			echo 'Final file - from '$(echo "$number_of_elements_in_ARRAY-1" | bc)' files with wv generic interval of '$interv_wv'' | cat - parcial$i.txt > temp && mv temp parcial$i.txt
+		else	
+
+			tail -n +4 <plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[i]}'_'${ARRAY_wv_intv[i+1]} >parcial$i.txt #elimina as 3 primeiras linhas, 2 de texto e uma de numeros para nao repetir (= a ultima do file anterior)
+		fi
+	done
+fi
+
+if [ -f parcial_uniq.txt ]; #Se existe apenas um ficheiro parcial ou varios
+then
+	#Se existe apenas um ficheiro parcial nao quero apagar dados iniciais por isso passo para pasta fora, crio ficheiro e depois apago
+	mv parcial_uniq.txt $folder_plansm
+	cd $folder_plansm
+	cat parcial_uniq.txt >> plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[-1]}
+	rm parcial_uniq.txt
+else
+
+	cat parcial* >> plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[-1]} #concatenar ficheiros
+	rm parcial*
+	mv plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[-1]} $folder_plansm
+fi
+#VOLTAR A DIRETORIO EM QUE É SUPOSTO EU ESTAR
+

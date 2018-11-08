@@ -30,6 +30,11 @@ declare -a min_wv=(11680.0)
  
 declare -a max_wv=(12920.0)
 
+declare -a interv_wv=(400) #deixar <=400 por problemas de memoria com MOOG
+
+declare -a step_wv_MOOG=(0.001) #deixar 0.001 para não ter problemas com MOOG
+
+
 # Parametros a serem feitos modelos por interpolação usando MOOG
 
 declare -a temperat=(3900)
@@ -58,19 +63,19 @@ cd $folder_with_interpol
 # Intervalo de comprimentos de onda a ser estudado
 
 dif_wv=$(echo "$max_wv - $min_wv" | bc) #diferença entre intervalo de wv
-div_int=$(echo "$dif_wv / 400" | bc) #divisao inteira 
-div_sobra=$(echo "$dif_wv % 400" | bc) #resto
+div_int=$(echo "$dif_wv / $interv_wv" | bc) #divisao inteira 
+div_sobra=$(echo "$dif_wv % $interv_wv" | bc) #resto
 
 # Construçao de Array inicial, sem consideraçao por possivel resto
 
 END_div_int=div_int
 for ((i=1;i<=END_div_int;i++));
 do
-	valor_min_wv_iter=$(echo "$min_wv + (400 * ($i-1))" | bc)
+	valor_min_wv_iter=$(echo "$min_wv + ($interv_wv * ($i-1))" | bc)
 	ARRAY_wv_intv[$i]=$valor_min_wv_iter
 done
 
-max_wv_from_intdiv=$(echo "${ARRAY_wv_intv[-1]} + 400" | bc)
+max_wv_from_intdiv=$(echo "${ARRAY_wv_intv[-1]} + $interv_wv" | bc)
 index_for_max_wv_from_intdiv=$(echo "$div_int + 1" | bc)
 ARRAY_wv_intv[$index_for_max_wv_from_intdiv]=$max_wv_from_intdiv
 
@@ -126,7 +131,7 @@ do
 						echo 'lines       1' >&3
 						echo 'flux/int    0' >&3
 						echo 'synlimits' >&3
-						echo $valor_min_wv_iter' '$valor_max_wv_iter' 0.001 10.0' >&3 # 400 parece ser intervalo optimo, intervalos grandes dá memory error
+						echo $valor_min_wv_iter' '$valor_max_wv_iter' '$step_wv_MOOG' 10.0' >&3 # 400 parece ser intervalo optimo, intervalos grandes dá memory error
 						echo 'plot        1' >&3		
 						echo 'damping     0' >&3
 						echo 'units       0' >&3
@@ -180,7 +185,56 @@ do
 					mv synth_sun_fromscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_Pr'.par $folder_par
 
 				done #fim do ciclo for das divisoes inteiras
+				
+				### União de ficheiros
+				cd $folder_plansm_wv_parts
 
+
+				number_of_elements_in_ARRAY=${#ARRAY_wv_intv[@]} #nº de elementos no array
+
+
+				if [ $number_of_elements_in_ARRAY -eq 2 ]; #se numero de elementos for só 2, isto é, um unico ficheiro
+				then
+							tail -n +3 <plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[2]} >parcial_uniq.txt #elimina as duas primeiras linhas
+							#Criar cabeçalho
+							echo 'start =  '${ARRAY_wv_intv[1]}'     stop =  '${ARRAY_wv_intv[2]}'     step =      '$step_wv_MOOG'' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt
+							echo 'Final file - from unique file' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt	
+				else
+					for ((i=1;i<=number_of_elements_in_ARRAY-1;i++)); do #-1 porque ultimo pode ter wv max final diferente de multiplo de intervalo de wv
+						if [ ${ARRAY_wv_intv[i]} == $min_wv ];
+						then
+
+							tail -n +3 <plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado'_'${ARRAY_wv_intv[i]}'_'${ARRAY_wv_intv[i+1]} >parcial$i.txt #elimina as duas primeiras linhas
+							#Criar cabeçalho
+							echo 'start =  '$min_wv'     stop =  '$max_wv'     step =      '$step_wv_MOOG'' | cat - parcial$i.txt > temp && mv temp parcial$i.txt
+							echo 'Final file - from '$(echo "$number_of_elements_in_ARRAY-1" | bc)' files with wv generic interval of '$interv_wv'' | cat - parcial$i.txt > temp && mv temp parcial$i.txt
+						else	
+
+							tail -n +4 <plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado'_'${ARRAY_wv_intv[i]}'_'${ARRAY_wv_intv[i+1]} >parcial$i.txt #elimina as 3 primeiras linhas, 2 de texto e uma de numeros para nao repetir (= a ultima do file anterior)
+						fi
+					done
+				fi
+
+				if [ -f parcial_uniq.txt ]; #Se existe apenas um ficheiro parcial ou varios
+				then
+					#Se existe apenas um ficheiro parcial nao quero apagar dados iniciais por isso passo para pasta fora, crio ficheiro e depois apago
+					mv parcial_uniq.txt $folder_plansm
+					cd $folder_plansm
+					cat parcial_uniq.txt >> plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado
+					#cat parcial_uniq.txt >> plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[-1]}
+		
+					rm parcial_uniq.txt
+				else
+
+ 					#concatenar ficheiros
+					cat parcial* >> plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado
+					#cat parcial* >> plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[-1]}
+					rm parcial*
+					mv plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado $folder_plansm
+				fi
+				### Fim de união de ficheiros
+
+			cd $folder_with_interpol
 			mv out_marcs_fromscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro.atm $folder_atm
 
 			done 
@@ -196,11 +250,9 @@ rm $name_file_lines
 cd $folder_with_interpol
 
 
-
 #Todos os ficheiros que não são criados corretamente ficam com ficheiros parcialmente errados no folder do sript, para não encher folder mando para uma pasta especifica
 
-#if [ -e out_marcs_fromscript_* ]
-if [ `ls -1 out_marcs_fromscript_*  2>/dev/null | wc -l ` -gt 0 ];
+if [ `ls -1 out_marcs_fromscript_*  2>/dev/null | wc -l ` -gt 0 ]; #if [ -e out_marcs_fromscript_* ]
 then
     mv out_marcs_fromscript_* $folder_where_error_files_go
     mv synth_sun_fromscript_* $folder_where_error_files_go
