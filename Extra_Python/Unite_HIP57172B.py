@@ -55,7 +55,7 @@ def conc(lista):
 
 espectro_unico=conc(todos_ordenados)
 
-f = open("HIP75172B_total.dat","w")
+f = open("HIP57172B_total.dat","w")
 for i in range(len(espectro_unico[0])):
     #print(espectro_unico[0][i], espectro_unico[1][i])
     f.write("%f\t%f\n" % (espectro_unico[0][i], espectro_unico[1][i]))
@@ -77,7 +77,7 @@ def plot_espectro_total(lista,save='no',estilo='original'):
             #ax.plot(lista[0], lista[1],'ro',markersize=2,marker='.')
 
 
-    plt.title(str('Total - HIP75172B'))
+    plt.title(str('Total - HIP57172B'))
     plt.ylabel('Flux')
     plt.xlabel('Wavelenght')
     if save=='yes':
