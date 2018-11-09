@@ -26,25 +26,31 @@ folder_plansm_wv_parts=$(echo ~/Masters/Lindgren/Files_plansm.outtest/Wv_parts)
 
 # Intervalo de comprimentos de onda a ser estudado, vou ter que separar em intervalos de 400A devido a problemas de memoria do MOOG
 
-declare -a min_wv=(11680.0)
+declare -a min_wv=(11680.0) #11680.0
  
-declare -a max_wv=(12920.0)
+declare -a max_wv=(12920.0) #12920.0
 
-declare -a interv_wv=(400) #deixar <=400 por problemas de memoria com MOOG
+declare -a interv_wv=(300) #deixar <=300 por problemas de memoria com MOOG
 
 declare -a step_wv_MOOG=(0.001) #deixar 0.001 para não ter problemas com MOOG
 
 
 # Parametros a serem feitos modelos por interpolação usando MOOG
 
+#declare -a temperat=(3850 3900 3950)
+
+#declare -a logg=(4.40 4.46 4.5) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
+
+#declare -a met=(0 0.1 0.15 0.2 0.25) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
+
+#declare -a micro=(0.9 0.95 1 1.05 1.1) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
+
+# Dados teste - HIP 57172B
+
 declare -a temperat=(3900)
-
 declare -a logg=(4.46) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
-
-declare -a met=(0) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
-
+declare -a met=(0.2) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
 declare -a micro=(1) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
-
 
 # Dados teste - Sun
 
@@ -54,7 +60,7 @@ declare -a micro=(1) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !
 #declare -a micro=(1)
 
 cd $folder_lines
-ls 
+ 
 cp $name_file_lines $folder_script
 cp $name_file_lines $folder_with_interpol
 
@@ -68,33 +74,41 @@ div_sobra=$(echo "$dif_wv % $interv_wv" | bc) #resto
 
 # Construçao de Array inicial, sem consideraçao por possivel resto
 
-END_div_int=div_int
-for ((i=1;i<=END_div_int;i++));
-do
-	valor_min_wv_iter=$(echo "$min_wv + ($interv_wv * ($i-1))" | bc)
-	ARRAY_wv_intv[$i]=$valor_min_wv_iter
-done
+END_div_int=$div_int
 
-max_wv_from_intdiv=$(echo "${ARRAY_wv_intv[-1]} + $interv_wv" | bc)
-index_for_max_wv_from_intdiv=$(echo "$div_int + 1" | bc)
-ARRAY_wv_intv[$index_for_max_wv_from_intdiv]=$max_wv_from_intdiv
-
-# Verificar se há resto ou não e caso haja incluir no Array
-
-
-max_wv_from_rest=$(echo "$max_wv_from_intdiv + $div_sobra" | bc)
-index_for_rest=$(echo "$div_int + 2" | bc)
-
-if [ $max_wv_from_intdiv != $max_wv ];
+if [ $END_div_int -eq 0 ]; #se intervalo for menor que step de intervalo
 then
-    ARRAY_wv_intv[$index_for_rest]=$max_wv_from_rest
-    END_wv_intv=div_int+1
-    echo "Divisão não inteira"
-
+	ARRAY_wv_intv[1]=$min_wv
+	ARRAY_wv_intv[2]=$max_wv
+	END_wv_intv=$div_int+1 #fazer uma iteraçao no ciclo que cria ficheiros
 else
-    END_wv_intv=div_int
-    echo "Divisão inteira"
+	for ((i=1;i<=END_div_int;i++));
+	do
+		valor_min_wv_iter=$(echo "$min_wv + ($interv_wv * ($i-1))" | bc)
+		ARRAY_wv_intv[$i]=$valor_min_wv_iter
+	done
+	max_wv_from_intdiv=$(echo "${ARRAY_wv_intv[-1]} + $interv_wv" | bc)
+	index_for_max_wv_from_intdiv=$(echo "$div_int + 1" | bc)
+	ARRAY_wv_intv[$index_for_max_wv_from_intdiv]=$max_wv_from_intdiv
+
+	# Verificar se há resto ou não e caso haja incluir no Array
+
+
+	max_wv_from_rest=$(echo "$max_wv_from_intdiv + $div_sobra" | bc)
+	index_for_rest=$(echo "$div_int + 2" | bc)
+
+	if [ $max_wv_from_intdiv != $max_wv ];
+	then
+	    ARRAY_wv_intv[$index_for_rest]=$max_wv_from_rest
+	    END_wv_intv=$div_int+1
+	    echo "Divisão não inteira"
+
+	else
+	    END_wv_intv=$div_int
+	    echo "Divisão inteira"
+	fi
 fi
+
 
 echo "Steps:"
 echo ${ARRAY_wv_intv[*]}
@@ -122,7 +136,7 @@ do
 					valor_max_wv_iter=$(echo "${ARRAY_wv_intv[$i+1]}" | bc)
 
 					# Criar ficheiro.
-					exec 3<> synth_sun_fromscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_Pr'.par # Se nome for maior dá erro, coding is a dark magic
+					exec 3<> synth_fscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_Pr'.par # Se nome for maior dá erro, coding is a dark magic
 
 	    					# Conteudo do ficheiro a ser criado
 						echo 'synth' >&3
@@ -130,6 +144,14 @@ do
 						echo 'atmosphere  1' >&3
 						echo 'lines       1' >&3
 						echo 'flux/int    0' >&3
+						echo 'abundances 7 1' >&3
+	 					echo '	 12  0.65' >&3   #Mg 0.65
+	 					echo '	 14  1.50' >&3	 #Si 1.50
+	 					echo '	 20  -0.55' >&3	 #Ca -0.55 ideal
+	 					echo '	 22  1.80' >&3   #Ti 1.20
+	 					echo '	 24  0.00' >&3   #Cr 0.00
+						echo '	 26  0.50' >&3   #Fe 1.00
+						echo '	 27  1.00' >&3   #Co 1.00
 						echo 'synlimits' >&3
 						echo $valor_min_wv_iter' '$valor_max_wv_iter' '$step_wv_MOOG' 10.0' >&3 # 400 parece ser intervalo optimo, intervalos grandes dá memory error
 						echo 'plot        1' >&3		
@@ -140,7 +162,7 @@ do
 						echo 'plotpars 1' >&3
 						echo '   '$valor_min_wv_iter' '$valor_max_wv_iter' -0.1  1.1' >&3
 						echo '     0.0  0.0  0.0 1.003'  >&3  # ? 
-						echo '   n 0.01 1.7 0.6 3.5 0.0' >&3  # ? r 0.01 1.7 0.6 3.5 0.0'
+						echo '   n 0.01 1.0 1.0 0.5 0.0' >&3  # ? r 0.01 1.7 0.6 3.5 0.0' #r* nada afeta, excepto r0.01 que muda um pouco tamanho mas pouco relevante, g 0.01 nao funciona para valores pouco altos e de resto parece nao fazer nada, v só 1.7 afeta, mas pouco, parece por linhas mais estreitas, m afeta "bicocidade"
 						echo 'standard_out 'plan.outtest_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_'$valor_min_wv_iter'_'$valor_max_wv_iter >&3
 						echo 'summary_out  'planraw.outtest_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_'$valor_min_wv_iter'_'$valor_max_wv_iter >&3
 						echo 'smoothed_out 'plansm.outtest_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_'$valor_min_wv_iter'_'$valor_max_wv_iter >&3
@@ -150,7 +172,7 @@ do
 					# Fechar ficheiro criado
 					exec 3>&-
 
-					echo synth_sun_fromscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_Pr'.par | MOOGSILENT
+					echo synth_fscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_Pr'.par | MOOGSILENT
 
 					#Formatar numeros - casas decimais - de ficheiros plan, planraw e plans para ter sempre mesmo nº de digitos em todos os parametros
 					
@@ -182,29 +204,31 @@ do
 					
 					#out_marcs tem que estar fora para poder reutilizar no ciclo pois .atm é sempre o mesmo
 					
-					mv synth_sun_fromscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_Pr'.par $folder_par
+					mv synth_fscript_$value_temp'_'$value_logg'_'$value_met'_'$value_micro'_Pr'.par $folder_par
+
 
 				done #fim do ciclo for das divisoes inteiras
 				
 				### União de ficheiros
 				cd $folder_plansm_wv_parts
 
-
 				number_of_elements_in_ARRAY=${#ARRAY_wv_intv[@]} #nº de elementos no array
-
-
+				
 				if [ $number_of_elements_in_ARRAY -eq 2 ]; #se numero de elementos for só 2, isto é, um unico ficheiro
 				then
-							tail -n +3 <plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[2]} >parcial_uniq.txt #elimina as duas primeiras linhas
-							#Criar cabeçalho
-							echo 'start =  '${ARRAY_wv_intv[1]}'     stop =  '${ARRAY_wv_intv[2]}'     step =      '$step_wv_MOOG'' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt
-							echo 'Final file - from unique file' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt	
+					tail -n +3 <plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[2]} >parcial_uniq.txt #elimina as duas primeiras linhas
+
+					#Criar cabeçalho
+					echo 'start =  '${ARRAY_wv_intv[1]}'     stop =  '${ARRAY_wv_intv[2]}'     step =      '$step_wv_MOOG'' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt
+					echo 'Final file - from unique file' | cat - parcial_uniq.txt > temp && mv temp parcial_uniq.txt	
 				else
 					for ((i=1;i<=number_of_elements_in_ARRAY-1;i++)); do #-1 porque ultimo pode ter wv max final diferente de multiplo de intervalo de wv
 						if [ ${ARRAY_wv_intv[i]} == $min_wv ];
 						then
 
 							tail -n +3 <plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado'_'${ARRAY_wv_intv[i]}'_'${ARRAY_wv_intv[i+1]} >parcial$i.txt #elimina as duas primeiras linhas
+
+
 							#Criar cabeçalho
 							echo 'start =  '$min_wv'     stop =  '$max_wv'     step =      '$step_wv_MOOG'' | cat - parcial$i.txt > temp && mv temp parcial$i.txt
 							echo 'Final file - from '$(echo "$number_of_elements_in_ARRAY-1" | bc)' files with wv generic interval of '$interv_wv'' | cat - parcial$i.txt > temp && mv temp parcial$i.txt
@@ -220,12 +244,11 @@ do
 					#Se existe apenas um ficheiro parcial nao quero apagar dados iniciais por isso passo para pasta fora, crio ficheiro e depois apago
 					mv parcial_uniq.txt $folder_plansm
 					cd $folder_plansm
+					rm plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado
 					cat parcial_uniq.txt >> plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado
 					#cat parcial_uniq.txt >> plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[-1]}
-		
 					rm parcial_uniq.txt
 				else
-
  					#concatenar ficheiros
 					cat parcial* >> plansm.outtest_$temp_formatado'_'$logg_formatado'_'$met_formatado'_'$micro_formatado
 					#cat parcial* >> plansm.outtest_3900_4.46_0.00_1.00'_'${ARRAY_wv_intv[1]}'_'${ARRAY_wv_intv[-1]}
@@ -255,7 +278,7 @@ cd $folder_with_interpol
 if [ `ls -1 out_marcs_fromscript_*  2>/dev/null | wc -l ` -gt 0 ]; #if [ -e out_marcs_fromscript_* ]
 then
     mv out_marcs_fromscript_* $folder_where_error_files_go
-    mv synth_sun_fromscript_* $folder_where_error_files_go
+    mv synth_fscript_* $folder_where_error_files_go
     mv plan.outtest_* $folder_where_error_files_go
     mv planraw.outtest_* $folder_where_error_files_go
     mv plansm.outtest_* $folder_where_error_files_go

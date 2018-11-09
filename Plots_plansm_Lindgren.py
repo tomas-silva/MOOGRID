@@ -103,8 +103,9 @@ def plot_dados_comparar(files, save='no', modo='original', top=8, ficheiro_a_com
                 label=str('Dados ficheiro a comparar' ))
 
         legend = ax.legend()  # mostra legenda
-
-        plt.title('Comparações - Temperatura, logg, [Fe/H], microturbulencia')
+        ax.set_ylim(0.55, 1.05)
+        ax.set_xlim(11940, 11990)
+        plt.title('Synthetic spectra vs Observations - HIP57172B')
         plt.ylabel('Flux')
         plt.xlabel('Wavelenght')
         if save == 'yes':
@@ -198,7 +199,6 @@ def plot_dados_comparar(files, save='no', modo='original', top=8, ficheiro_a_com
         ### Extra
 
         legend = ax.legend()  # mostra legenda
-
         plt.title('Melhores aproximações - Método chi_quadrado')
         plt.ylabel('Flux')
         plt.xlabel('Wavelenght')
@@ -281,7 +281,7 @@ def ajustar_lens(dados_1, inicio, fim, tamanho, plot='no'):
 
 
 
-# Valores possiveis
+# Valores possiveis Sol
 #set_comparar_temp = [5600, 5650, 5700, 5750, 5777, 5800, 5850, 5900, 5950, 6000]
 #set_comparar_logg = [4.3, 4.4, 4.44, 4.5, 4.6]
 #set_comparar_metal = [-0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4]
@@ -295,11 +295,17 @@ observer_files = os.listdir("/home/tomas/Masters/Lindgren/Files_plansm.outtest")
 
 # Só temos agora os ficheiros a começar por 'plansm'
 plansm_files = filtro(all_files, 6, 'plansm')
-HIP75172B =  (filtro(observer_files, 9, 'HIP75172B'))[0]
+HIP57172B =  (filtro(observer_files, 9, 'HIP57172B'))[0]
+
+# Valores possiveis HIP57172B
+#set_comparar_temp = [3900]
+#set_comparar_logg = [4.46]
+#set_comparar_metal = [0. 0.2, 0.25]
+#set_comparar_micro = [1, 1.1, 1.15]
 
 set_comparar_temp = [3900]
 set_comparar_logg = [4.46]
-set_comparar_metal = [0]
+set_comparar_metal = [0.2]
 set_comparar_micro = [1]
 
 # files_compare = (construct_list_filenames(set_comparar_temp, set_comparar_logg, set_comparar_metal, set_comparar_micro, 'Sergio'))
@@ -318,9 +324,9 @@ set_comparar_micro = [1]
 
 ###
 
-print(HIP75172B)
+print(HIP57172B)
 Test_set = (construct_list_filenames(set_comparar_temp, set_comparar_logg,
                                      set_comparar_metal, set_comparar_micro, None)) #Extra nao pode começar por numero, a nao ser EXATAMENTE formato usual
 
 #print(Test_set[-1])
-plot_dados_comparar(Test_set, 'no_save','comparar_plots',1,HIP75172B)
+plot_dados_comparar(Test_set, 'no_save','comparar_plots',1,HIP57172B)
