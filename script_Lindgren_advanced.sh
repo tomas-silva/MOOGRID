@@ -74,9 +74,9 @@ plotpars_line3=$(echo $plot_par_smooth_type'_'$plot_par_fwhm_g_formatado'_'$plot
 
 # Dados teste - HIP 57172B HIP 12048B
 
-declare -a temperat=(3700 3900 4100)
-declare -a logg=(4.37 4.46 4.55) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
-declare -a met=(0.08 0.16 0.24) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
+declare -a temperat=(3500 3550 3600 3650 3700 3750 3800 3850 3900 3950 4000 4050 4100 4150 4200 4250 4300 4350 4400 4450 4500)
+declare -a logg=(4.46) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
+declare -a met=(-0.25 -0.2 -0.15 -0.1 -0.05 0.0 0.05 0.1 0.15 0.2 0.25) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
 declare -a micro=(1.0) #Não usar algo tipo '1.0', usar '1', '1.0' pode dar erro !!!
 
 # Dados teste - Sun
